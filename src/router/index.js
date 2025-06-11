@@ -1,5 +1,7 @@
+import { createRouter, createWebHistory } from 'vue-router'
+import { authService } from '@/services/supabase.js'
 import LoginView from '@/views/LoginView.vue'
-import HomeView from '@/views/HomeView.vue'
+import CountriesView from '@/views/CountriesView.vue'
 import CountryDetail from '@/views/CountryDetail.vue'
 
 const routes = [
@@ -15,8 +17,8 @@ const routes = [
   },
   {
     path: '/countries',
-    name: 'Home',
-    component: HomeView,
+    name: 'Countries',
+    component: CountriesView,
     meta: { requiresAuth: true }
   },
   {
@@ -39,21 +41,29 @@ const router = createRouter({
 
 // Navigation guards for authentication
 router.beforeEach(async (to, from, next) => {
-  const { user } = await authService.getCurrentUser()
-  
-  // Check if route requires authentication
-  if (to.meta.requiresAuth && !user) {
-    next('/login')
-    return
+  try {
+    const { user } = await authService.getCurrentUser()
+    
+    if (to.meta.requiresAuth && !user) {
+      next('/login')
+      return
+    }
+    
+    if (to.meta.requiresGuest && user) {
+      next('/countries')
+      return
+    }
+    
+    next()
+  } catch (error) {
+    console.error('Auth check failed:', error)
+    // If auth check fails, redirect to login for protected routes
+    if (to.meta.requiresAuth) {
+      next('/login')
+    } else {
+      next()
+    }
   }
-  
-  // Prevent authenticated users from accessing login
-  if (to.meta.requiresGuest && user) {
-    next('/countries')
-    return
-  }
-  
-  next()
 })
 
 export default router
