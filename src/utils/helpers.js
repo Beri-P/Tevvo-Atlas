@@ -1,7 +1,7 @@
 // Format population number with commas
 export function formatPopulation(population) {
-    if (!population) return 'N/A'
-    return population.toLocaleString()
+  if (population === null || population === undefined) return 'N/A'
+  return population.toLocaleString()
   }
   
   // Filter countries by search term
