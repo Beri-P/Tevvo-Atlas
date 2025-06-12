@@ -1,4 +1,6 @@
-<template>
+const applySorting = () => {
+  filteredCountries.value = sortCountries(filteredCountries.value, sortBy.value)
+}<template>
   <div class="countries-container">
     <header class="app-header">
       <h1>ATLAS</h1>
@@ -19,16 +21,15 @@
             type="text" 
             placeholder="Search countries by name, capital, or region..."
             class="search-input"
-            @input="handleSearch"
           />
           <div class="filter-controls">
-            <select v-model="selectedRegion" @change="applyFilters" class="region-filter">
+            <select v-model="selectedRegion" class="region-filter">
               <option value="">All Regions</option>
               <option v-for="region in regions" :key="region" :value="region">
                 {{ region }}
               </option>
             </select>
-            <select v-model="sortBy" @change="applySorting" class="sort-select">
+            <select v-model="sortBy" class="sort-select">
               <option value="name">Sort by Name</option>
               <option value="population">Sort by Population</option>
               <option value="region">Sort by Region</option>
@@ -115,7 +116,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { authService } from '@/services/supabase.js'
 import { countriesApi } from '@/services/countriesApi.js'
@@ -170,6 +171,24 @@ const visiblePages = computed(() => {
   return pages.sort((a, b) => a - b)
 })
 
+// Watchers for reactive filtering - only for search term
+watch(searchTerm, () => {
+  handleSearch()
+}, { immediate: false })
+
+// Watchers for reactive filtering
+watch(searchTerm, () => {
+  applyFilters()
+})
+
+watch(selectedRegion, () => {
+  applyFilters()
+})
+
+watch(sortBy, () => {
+  applyFilters()
+})
+
 // Methods
 const fetchCountries = async () => {
   loading.value = true
@@ -206,10 +225,6 @@ const applyFilters = () => {
 
   filteredCountries.value = sortCountries(filtered, sortBy.value)
   currentPage.value = 1 // Reset to first page when filtering
-}
-
-const applySorting = () => {
-  filteredCountries.value = sortCountries(filteredCountries.value, sortBy.value)
 }
 
 const goToPage = (page) => {

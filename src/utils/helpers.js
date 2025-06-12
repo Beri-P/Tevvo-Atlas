@@ -6,15 +6,22 @@ export function formatPopulation(population) {
   
   // Filter countries by search term
   export function filterCountries(countries, searchTerm) {
-    if (!searchTerm) return countries
-    
-    const term = searchTerm.toLowerCase()
-    return countries.filter(country => 
-      country.name.common.toLowerCase().includes(term) ||
-      country.name.official.toLowerCase().includes(term) ||
-      (country.capital && country.capital[0].toLowerCase().includes(term)) ||
-      country.region.toLowerCase().includes(term)
-    )
+    if (!searchTerm) return countries;
+  
+    const term = searchTerm.toLowerCase();
+    return countries.filter(country => {
+      const common   = country.name?.common?.toLowerCase()   || '';
+      const official = country.name?.official?.toLowerCase() || '';
+      const capital  = country.capital?.[0]?.toLowerCase()    || '';
+      const region   = country.region?.toLowerCase()         || '';
+  
+      return (
+        common.includes(term) ||
+        official.includes(term) ||
+        capital.includes(term) ||
+        region.includes(term)
+      );
+    });
   }
   
   // Sort countries by different criteria
