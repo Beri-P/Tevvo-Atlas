@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { authService } from '@/services/supabase.js'
+import { authService } from '@/services/supabase'
 import LoginView from '@/views/LoginView.vue'
 import CountriesView from '@/views/CountriesView.vue'
 import CountryDetail from '@/views/CountryDetail.vue'

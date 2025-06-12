@@ -1,19 +1,20 @@
 import { createClient } from '@supabase/supabase-js'
+import type { SupabaseClient, User, AuthError, Session } from '@supabase/supabase-js'
 
-// Use environment variables instead of hardcoded values
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+// Environment variables
+const supabaseUrl: string = import.meta.env.VITE_SUPABASE_URL
+const supabaseKey: string = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 if (!supabaseUrl || !supabaseKey) {
   throw new Error('Missing Supabase environment variables')
 }
 
-export const supabase = createClient(supabaseUrl, supabaseKey)
+export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseKey)
 
 // Authentication functions
 export const authService = {
   // Sign up new user
-  async signUp(email, password) {
+  async signUp(email: string, password: string): Promise<{ data: any; error: AuthError | null }> {
     const { data, error } = await supabase.auth.signUp({
       email,
       password
@@ -22,7 +23,7 @@ export const authService = {
   },
 
   // Sign in existing user
-  async signIn(email, password) {
+  async signIn(email: string, password: string): Promise<{ data: any; error: AuthError | null }> {
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password
@@ -31,19 +32,19 @@ export const authService = {
   },
 
   // Sign out current user
-  async signOut() {
+  async signOut(): Promise<{ error: AuthError | null }> {
     const { error } = await supabase.auth.signOut()
     return { error }
   },
 
   // Get current user
-  async getCurrentUser() {
+  async getCurrentUser(): Promise<{ user: User | null; error: AuthError | null }> {
     const { data: { user }, error } = await supabase.auth.getUser()
     return { user, error }
   },
 
   // Listen to auth state changes
-  onAuthStateChange(callback) {
+  onAuthStateChange(callback: (event: string, session: Session | null) => void) {
     return supabase.auth.onAuthStateChange(callback)
   }
 }

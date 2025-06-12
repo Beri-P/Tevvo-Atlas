@@ -1,6 +1,4 @@
-const applySorting = () => {
-  filteredCountries.value = sortCountries(filteredCountries.value, sortBy.value)
-}<template>
+<template>
   <div class="countries-container">
     <header class="app-header">
       <h1>ATLAS</h1>
@@ -118,137 +116,71 @@ const applySorting = () => {
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useCountryStore } from '@/stores/countryStore.js'
 import { authService } from '@/services/supabase.js'
-import { countriesApi } from '@/services/countriesApi.js'
-import { formatPopulation, filterCountries, sortCountries, debounce } from '@/utils/helpers.js'
+import { formatPopulation } from '@/utils/helpers.js'
 
+// Pinia store
+const store = useCountryStore()
 const router = useRouter()
-
-// Reactive state
-const countries = ref([])
-const filteredCountries = ref([])
-const loading = ref(true)
-const error = ref('')
-const searchTerm = ref('')
-const selectedRegion = ref('')
-const sortBy = ref('name')
-const currentPage = ref(1)
-const countriesPerPage = 20
 const userEmail = ref('')
 
-// Computed properties
-const regions = computed(() => {
-  const uniqueRegions = [...new Set(countries.value.map(c => c.region))]
-  return uniqueRegions.sort()
-})
-
-const totalPages = computed(() => {
-  return Math.ceil(filteredCountries.value.length / countriesPerPage)
-})
-
-const paginatedCountries = computed(() => {
-  const start = (currentPage.value - 1) * countriesPerPage
-  const end = start + countriesPerPage
-  return filteredCountries.value.slice(start, end)
-})
-
-const visiblePages = computed(() => {
-  const total = totalPages.value
-  const current = currentPage.value
-  const pages = []
-  
-  // Always show first page
+// Proxy store state/getters for template
+const loading            = computed(() => store.loading)
+const error              = computed(() => store.error)
+const searchTerm         = computed({ get: () => store.searchTerm,     set: v => store.searchTerm = v })
+const selectedRegion     = computed({ get: () => store.selectedRegion, set: v => store.selectedRegion = v })
+const sortBy             = computed({ get: () => store.sortBy,         set: v => store.sortBy = v })
+const currentPage        = computed({ get: () => store.currentPage,    set: v => store.currentPage = v })
+const filteredCountries  = computed(() => store.filtered)
+const paginatedCountries = computed(() => store.paginated)
+const totalPages         = computed(() => store.totalPages)
+const regions            = computed(() => [...new Set(store.all.map(c => c.region))].sort())
+const visiblePages       = computed(() => {
+  const total   = store.totalPages
+  const current = store.currentPage
+  const pages   = []
   if (total > 0) pages.push(1)
-  
-  // Show pages around current page
   for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) {
     if (!pages.includes(i)) pages.push(i)
   }
-  
-  // Always show last page
   if (total > 1 && !pages.includes(total)) pages.push(total)
-  
   return pages.sort((a, b) => a - b)
 })
 
-// Watchers for reactive filtering - only for search term
-watch(searchTerm, () => {
-  handleSearch()
-}, { immediate: false })
-
-// Watchers for reactive filtering
-watch(searchTerm, () => {
-  applyFilters()
-})
-
-watch(selectedRegion, () => {
-  applyFilters()
-})
-
-watch(sortBy, () => {
-  applyFilters()
-})
+// Reset page when filters change
+watch(
+  [() => store.searchTerm, () => store.selectedRegion, () => store.sortBy],
+  () => { store.currentPage = 1 }
+)
 
 // Methods
 const fetchCountries = async () => {
-  loading.value = true
-  error.value = ''
-  
-  const { data, error: apiError } = await countriesApi.getAllCountries()
-  
-  if (apiError) {
-    error.value = apiError
-  } else {
-    countries.value = data || []
-    applyFilters()
-  }
-  
-  loading.value = false
+  await store.fetchAll()
 }
 
-const handleSearch = debounce(() => {
-  applyFilters()
-}, 300)
-
-const applyFilters = () => {
-  let filtered = countries.value
-
-  // Apply search filter
-  if (searchTerm.value) {
-    filtered = filterCountries(filtered, searchTerm.value)
-  }
-
-  // Apply region filter
-  if (selectedRegion.value) {
-    filtered = filtered.filter(country => country.region === selectedRegion.value)
-  }
-
-  filteredCountries.value = sortCountries(filtered, sortBy.value)
-  currentPage.value = 1 // Reset to first page when filtering
-}
-
-const goToPage = (page) => {
-  if (page >= 1 && page <= totalPages.value) {
-    currentPage.value = page
-    // Scroll to top when changing pages
+const goToPage = page => {
+  if (page >= 1 && page <= store.totalPages) {
+    store.currentPage = page
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 }
 
-const goToCountryDetail = (countryCode) => {
+const goToCountryDetail = countryCode => {
   router.push(`/country/${countryCode}`)
 }
 
-const getCapital = (country) => {
-  return country.capital && country.capital.length > 0 ? country.capital[0] : 'N/A'
+const getCapital = country => {
+  return country.capital && country.capital.length > 0
+    ? country.capital[0]
+    : 'N/A'
 }
 
 const handleLogout = async () => {
   try {
     await authService.signOut()
     router.push('/login')
-  } catch (error) {
-    console.error('Logout error:', error)
+  } catch {
     router.push('/login')
   }
 }
@@ -256,11 +188,9 @@ const handleLogout = async () => {
 const getCurrentUser = async () => {
   try {
     const { user } = await authService.getCurrentUser()
-    if (user) {
-      userEmail.value = user.email
-    }
-  } catch (error) {
-    console.error('Error getting user:', error)
+    if (user) userEmail.value = user.email
+  } catch {
+    /* ignore */
   }
 }
 
@@ -273,7 +203,10 @@ onMounted(() => {
 
 <style scoped>
 .countries-container {
+  width: 100%;
   min-height: 100vh;
+  margin: 0;
+  padding: 0;
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
 }
 
@@ -284,6 +217,7 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  width: 100%;
 }
 
 .app-header h1 {
@@ -320,8 +254,8 @@ onMounted(() => {
 
 .main-content {
   padding: 2rem;
-  max-width: 1400px;
-  margin: 0 auto;
+  width: 100%;
+  margin: 0;
 }
 
 .search-section {
@@ -330,6 +264,7 @@ onMounted(() => {
   border-radius: 12px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   margin-bottom: 2rem;
+  width: 100%;
 }
 
 .search-container {
@@ -413,9 +348,10 @@ onMounted(() => {
 
 .countries-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1.5rem;
   margin-bottom: 2rem;
+  width: 100%;
 }
 
 .country-card {
