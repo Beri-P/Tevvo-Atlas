@@ -9,7 +9,17 @@ if (!supabaseUrl || !supabaseKey) {
   throw new Error('Missing Supabase environment variables')
 }
 
-export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseKey)
+export const supabase: SupabaseClient = createClient(
+  supabaseUrl,
+  supabaseKey,
+  {
+    auth: {
+      persistSession: true,    // save access & refresh tokens in localStorage
+      autoRefreshToken: true,  // automatically refresh expired JWTs
+      detectSessionInUrl: false // you’re not using URL-based OAuth callbacks here
+    }
+  }
+)
 
 // Authentication functions
 export const authService = {
